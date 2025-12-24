@@ -48,3 +48,8 @@ Thumbs.db
 # I will ignore them for now to avoid large binary uploads unless user insists, 
 # but usually for a starter project simple sqlite is fine. 
 # Re-thinking: Better to ignore DBs to avoid conflicts.
+
+# User documents
+개발추가변경 아이디어.txt
+나의 앤티그래비티체험기.txt
+외국어 서적 독서의 달인앱 - 개발계획.docx
