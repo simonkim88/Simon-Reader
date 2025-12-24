@@ -1,0 +1,440 @@
+:root {
+    /* Fantasy Library Palette (Static) */
+    --bg-wood-dark: #2d1b0e;
+    --bg-wood-light: #4a2c17;
+    --bg-parchment: #f3e5ab;
+    --bg-parchment-edge: #d4c596;
+    --text-ink: #2b1d0e;
+    --text-gold: #d4af37;
+    --text-muted: #8b5a2b;
+    --accent-gold: #c5a059;
+    --accent-red: #8a3324;
+    --border-brass: #b8860b;
+
+    /* Fonts */
+    --font-sans: 'Pretendard', 'NanumSquareNeo', 'Inter', sans-serif;
+    --font-serif: 'Merriweather', "Microsoft YaHei", serif;
+    --font-display: 'Playfair Display', serif;
+
+    /* Shadows */
+    --shadow-deep: 0 10px 30px rgba(0, 0, 0, 0.7);
+    --shadow-inset: inset 0 0 20px rgba(0, 0, 0, 0.5);
+
+    /* Default Theme Variables (Dark Mode Default) */
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --highlight-yellow: rgba(250, 204, 21, 0.6);
+    --highlight-green: rgba(74, 222, 128, 0.6);
+    --highlight-blue: rgba(96, 165, 250, 0.6);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: #1a0f0a;
+    color: var(--text-ink);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    height: 100%;
+}
+
+/* --- Sidebar: The Bookshelf --- */
+.sidebar {
+    width: 300px;
+    background-color: var(--bg-wood-dark);
+    /* Leather Texture Background */
+    background-image: url('/static/images/sidebar_bg.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-right: 4px solid #1a0f0a;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem 1rem;
+    box-shadow: 10px 0 20px rgba(0, 0, 0, 0.6);
+    position: relative;
+    z-index: 20;
+    align-items: center;
+}
+
+/* Ornate Top/Bottom Borders for Sidebar */
+.sidebar::before,
+.sidebar::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--border-brass), transparent);
+}
+
+.sidebar::before {
+    top: 10px;
+}
+
+.sidebar::after {
+    bottom: 10px;
+}
+
+/* Image-Based Menu Styles */
+.sidebar-menu-container {
+    margin-bottom: 2rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.menu-overlay {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.menu-overlay:hover {
+    background: rgba(212, 175, 55, 0.1);
+    box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+/* Current Book Display */
+#current-book-nav {
+    width: 100%;
+    margin-top: auto;
+    padding: 1rem;
+    background: linear-gradient(135deg, #5d4037 0%, #3e2723 100%);
+    border: 2px solid #2d1b0e;
+    border-radius: 4px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8), 0 5px 15px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    position: relative;
+}
+
+#current-book-nav::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    pointer-events: none;
+}
+
+#current-book-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #e2d9d0;
+    text-decoration: none;
+}
+
+#current-book-title {
+    font-family: var(--font-serif);
+    font-style: italic;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.sidebar-footer {
+    width: 100%;
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Buttons */
+.btn-primary {
+    width: 100%;
+    padding: 0.8rem;
+    background: linear-gradient(to bottom, #5d4037, #3e2723);
+    color: #d4af37;
+    border: 2px solid #2d1b0e;
+    border-top-color: #6d4c41;
+    border-bottom-color: #1a0f0a;
+    border-radius: 4px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(to bottom, #6d4c41, #4e342e);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* --- Main Content --- */
+.main-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4rem;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    position: relative;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Library Grid */
+.library-header {
+    text-align: center;
+    margin-bottom: 4rem;
+    position: relative;
+}
+
+.library-header h2 {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    color: var(--text-ink);
+    /* Keep library header dark ink for now, or use variable? */
+    /* Note: If main content is dark, this might be invisible. Let's use text-primary */
+    color: var(--text-primary);
+    font-weight: 400;
+}
+
+.library-header::after {
+    content: "❖  ❖  ❖";
+    display: block;
+    margin-top: 1rem;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    letter-spacing: 1rem;
+}
+
+.library-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 3rem;
+    padding: 0 2rem;
+}
+
+.book-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.3s;
+}
+
+.book-card:hover {
+    transform: translateY(-10px);
+}
+
+.book-cover {
+    width: 100%;
+    aspect-ratio: 2/3;
+    background: #5d4037;
+    border-radius: 4px 8px 8px 4px;
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.4), inset 3px 0 5px rgba(0, 0, 0, 0.3);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: rgba(255, 255, 255, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.book-cover::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 15px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.2));
+    border-right: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.book-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-align: center;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.book-author {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+/* Reader View */
+.reader-container {
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: var(--font-serif);
+    line-height: 2;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    background: transparent;
+    padding: 3rem;
+}
+
+.reader-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    border-bottom: 2px solid var(--text-secondary);
+    padding-bottom: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.reader-header h1 {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    color: var(--text-primary);
+}
+
+/* Popups & Panels */
+.popup,
+#settings-panel {
+    background: var(--bg-secondary) !important;
+    border: 2px solid var(--border-brass) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    color: var(--text-primary) !important;
+    border-radius: 4px !important;
+    position: fixed;
+    z-index: 1001;
+    width: 250px;
+}
+
+.popup-header strong {
+    color: var(--accent-color) !important;
+    font-family: var(--font-display);
+}
+
+select,
+input,
+textarea {
+    background: var(--bg-primary) !important;
+    border: 1px solid var(--border-brass) !important;
+    color: var(--text-primary) !important;
+    font-family: var(--font-serif) !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #2d1b0e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #5d4037;
+    border: 1px solid #2d1b0e;
+    border-radius: 5px;
+}
+
+/* Themes */
+body.theme-light {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --border-color: #e2e8f0;
+    --accent-color: #2563eb;
+}
+
+body.theme-sepia {
+    --bg-primary: #f4ecd8;
+    --bg-secondary: #e9e1cc;
+    --text-primary: #5b4636;
+    --text-secondary: #8b735b;
+    --border-color: #dcd6c6;
+    --accent-color: #a0522d;
+}
+
+body.theme-dark {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2a2a2a;
+    --text-primary: #e5e5e5;
+    --text-secondary: #a3a3a3;
+    --border-color: #404040;
+    --accent-color: #fbbf24;
+}
+
+body.theme-dark-wood {
+    --bg-primary: #2d1b0e;
+    --bg-secondary: #3e2723;
+    --text-primary: #e2d9d0;
+    --text-secondary: #a1887f;
+    --border-color: #5d4037;
+    --accent-color: #d4af37;
+}
+
+/* Toast Notification */
+#toast {
+    visibility: hidden;
+    min-width: 250px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    text-align: center;
+    border-radius: 4px;
+    padding: 16px;
+    position: fixed;
+    z-index: 2000;
+    left: 50%;
+    bottom: 30px;
+    transform: translateX(-50%);
+    border: 1px solid var(--border-brass);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    font-family: var(--font-sans);
+    opacity: 0;
+    transition: opacity 0.3s, bottom 0.3s;
+}
+
+#toast.show {
+    visibility: visible;
+    opacity: 1;
+    bottom: 50px;
+}
+
+/* Reader Content Hyperlinks */
+.reader-content a,
+.reader-content a:visited,
+.reader-content a:link {
+    color: var(--accent-color) !important;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: opacity 0.2s;
+}
+
+
+.reader-content a:hover {
+    opacity: 0.8;
+}

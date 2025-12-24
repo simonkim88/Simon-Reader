@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Bookmarks - Simon Reader{% endblock %}
+
+{% block content %}
+<div class="library-header">
+    <h2>My Bookmarks</h2>
+</div>
+
+<div
+    style="background: var(--bg-secondary); border-radius: 0.75rem; padding: 1.5rem; border: 1px solid var(--border-color);">
+    {% if bookmarks %}
+    <table style="width: 100%; border-collapse: collapse; color: var(--text-primary);">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--border-color); text-align: left;">
+                <th style="padding: 1rem; width: 30%;">Book</th>
+                <th style="padding: 1rem; width: 40%;">Label / Text</th>
+                <th style="padding: 1rem; width: 30%;">Date</th>
+                <th style="padding: 1rem; width: 5%;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for bookmark in bookmarks %}
+            <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 1rem; font-weight: 600; color: var(--accent-color);">{{ bookmark.book.title }}</td>
+                <td style="padding: 1rem; color: var(--text-secondary);">
+                    <a href="/reader/{{ bookmark.book.id }}?bookmark_id={{ bookmark.id }}"
+                        style="color: inherit; text-decoration: none; border-bottom: 1px dotted var(--text-secondary);"
+                        onmouseover="this.style.borderBottom='1px solid var(--accent-color)'; this.style.color='var(--accent-color)'"
+                        onmouseout="this.style.borderBottom='1px dotted var(--text-secondary)'; this.style.color='inherit'">
+                        {{ bookmark.label or '-' }}
+                    </a>
+                    {% if bookmark.comment %}
+                    <div
+                        style="font-size: 0.85rem; color: var(--text-primary); margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border-color);">
+                        💬 {{ bookmark.comment }}
+                    </div>
+                    {% endif %}
+                </td>
+                <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                    {{ bookmark.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </td>
+                <td style="padding: 1rem; text-align: center;">
+                    <button class="delete-btn" data-id="{{ bookmark.id }}"
+                        style="background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.1rem;"
+                        title="Delete Bookmark">
+                        🗑️
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+        <p style="margin-bottom: 1rem; font-size: 1.2rem;">No bookmarks yet.</p>
+        <p>Read a book and add bookmarks to see them here!</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            // if (!confirm('Are you sure you want to delete this bookmark?')) return;
+
+            const id = e.target.closest('button').dataset.id;
+            try {
+                const response = await fetch(`/books/bookmarks/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    // Remove row
+                    const row = e.target.closest('tr');
+                    row.remove();
+
+                    // Check if empty
+                    const tbody = document.querySelector('tbody');
+                    if (tbody && tbody.children.length === 0) {
+                        location.reload(); // Reload to show empty state
+                    }
+                } else {
+                    alert('Failed to delete bookmark');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error deleting bookmark');
+            }
+        });
+    });
+</script>
+{% endblock %}

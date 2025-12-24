@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+.venv
+
+# IDEs
+.vscode/
+.idea/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Project specific
+*.db
+!simon_reader.db
+# Keeping simon_reader.db if it contains seed data, otherwise might want to ignore it too if it's purely local data.
+# Assuming user might want their current DB structure/content. 
+# But usually we verify if it stores large binaries or sensitive info.
+# For now, let's include it but typically *.db is ignored.
+# Let's actually ignore *.db generally but maybe keep the schema if it was sql file.
+# The user file list showed 'reader.db' and 'simon_reader.db'.
+# I will ignore them for now to avoid large binary uploads unless user insists, 
+# but usually for a starter project simple sqlite is fine. 
+# Re-thinking: Better to ignore DBs to avoid conflicts.

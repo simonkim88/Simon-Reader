@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="library-header">
+    <h2>Your Library</h2>
+</div>
+
+<div class="library-grid" id="library-grid">
+    <!-- Books will be rendered here -->
+    {% for book in books %}
+    <div class="book-card-wrapper" style="position: relative;">
+        <a href="/reader/{{ book.id }}" class="book-card"
+            style="display: block; text-decoration: none; color: inherit;">
+            <div class="book-cover" {% if book.cover_image
+                %}style="background-image: url('{{ book.cover_image }}'); background-size: cover; background-position: center;"
+                {% endif %}>
+                {% if not book.cover_image %}
+                {% if book.file_type == 'epub' %}
+                📘
+                {% elif book.file_type == 'docx' %}
+                📄
+                {% elif book.file_type == 'txt' %}
+                📝
+                {% elif book.file_type == 'pdf' %}
+                📕
+                {% else %}
+                ❓
+                {% endif %}
+                {% endif %}
+            </div>
+            <div class="book-title">{{ book.title }}</div>
+            <div class="book-author">{{ book.author }}</div>
+        </a>
+        <button class="delete-btn" data-id="{{ book.id }}"
+            style="position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px;">
+            ✕
+        </button>
+    </div>
+    {% else %}
+    <div class="empty-state"
+        style="grid-column: 1/-1; text-align: center; padding: 2rem; color: var(--text-secondary);">
+        <p>No books yet. Upload one to get started!</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Upload Modal (Hidden by default) -->
+<input type="file" id="file-input" accept=".epub,.docx,.txt,.pdf" style="display: none;">
+{% endblock %}
+
+{% block scripts %}
+<style>
+    /* Add drag-and-drop styles */
+    .library-grid {
+        min-height: 60vh;
+        /* Ensure drop zone is large enough */
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 3rem;
+        padding: 0 2rem;
+        /* If we use grid, min-height works too */
+        transition: background-color 0.2s, border 0.2s;
+        border-radius: 8px;
+        border: 2px solid transparent;
+        /* Reserve space for border */
+    }
+
+    /* Adjust empty state to take full height if alone */
+    .empty-state {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        min-height: 100%;
+    }
+
+    .library-grid.drag-over {
+        border: 2px dashed #4a90e2;
+        background-color: rgba(74, 144, 226, 0.1);
+        position: relative;
+    }
+
+    .library-grid.drag-over::after {
+        content: "Drop books here to upload";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5rem;
+        color: #4a90e2;
+        font-weight: bold;
+        pointer-events: none;
+        z-index: 10;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+</style>
+<script>
+    // Upload handling
+    // Note: The upload button is in the sidebar (base.html), which triggers this hidden input
+    const uploadBtn = document.getElementById('upload-btn');
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', () => {
+            document.getElementById('file-input').click();
+        });
+    }
+
+    // Common upload function
+    async function uploadFile(file) {
+        if (!file) return false;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/books/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                console.log(`Uploaded ${file.name}`);
+                return true;
+            } else {
+                console.error('Upload failed', response.statusText);
+                return false;
+            }
+        } catch (error) {
+            console.error('Upload error', error);
+            return false;
+        }
+    }
+
+    // File input change handler
+    document.getElementById('file-input').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (await uploadFile(file)) {
+            window.location.reload();
+        } else {
+            alert('Upload failed. Please check the file and try again.');
+        }
+    });
+
+    // Drag and Drop Logic
+    const dropZone = document.getElementById('library-grid');
+    let dragCounter = 0;
+
+    // Add drag events
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    dropZone.addEventListener('dragenter', (e) => {
+        dragCounter++;
+        dropZone.classList.add('drag-over');
+    }, false);
+
+    dropZone.addEventListener('dragleave', (e) => {
+        dragCounter--;
+        if (dragCounter === 0) {
+            dropZone.classList.remove('drag-over');
+        }
+    }, false);
+
+    dropZone.addEventListener('drop', (e) => {
+        dragCounter = 0;
+        dropZone.classList.remove('drag-over');
+        handleDrop(e);
+    }, false);
+
+    async function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files.length > 0) {
+            let successCount = 0;
+            let failCount = 0;
+
+            // Show loading state if desired, for now just process
+            for (let i = 0; i < files.length; i++) {
+                if (await uploadFile(files[i])) {
+                    successCount++;
+                } else {
+                    failCount++;
+                }
+            }
+
+            if (successCount > 0) {
+                window.location.reload();
+            } else {
+                if (failCount > 0) {
+                    alert('Failed to upload files. Please ensure they are valid book formats (.epub, .pdf, .txt, .docx).');
+                } else {
+                    alert('No files detected.');
+                }
+            }
+        }
+    }
+
+    // Delete handling
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault(); // Prevent link navigation if inside anchor (though we moved it out)
+            e.stopPropagation();
+
+            if (!confirm('Are you sure you want to delete this book?')) return;
+
+            const bookId = btn.dataset.id;
+            try {
+                const response = await fetch(`/books/${bookId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Delete failed');
+                }
+            } catch (error) {
+                console.error('Delete failed', error);
+                alert('Error deleting book');
+            }
+        });
+    });
+</script>
+{% endblock %}

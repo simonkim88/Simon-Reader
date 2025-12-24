@@ -1,0 +1,1606 @@
+{% extends "base.html" %}
+
+{% block title %}{{ book.title }} - Simon's Reader{% endblock %}
+
+{% block content %}
+<div class="reader-container">
+    <div class="reader-header" style="display: flex; justify-content: center; align-items: center;">
+        <div>
+            <h1>{{ book.title }}</h1>
+            <p class="book-author">{{ book.author }}</p>
+        </div>
+    </div>
+
+    <!-- Floating Search Toggle -->
+    <button id="toggle-search-btn"
+        style="position: fixed; top: 20px; right: 30px; background: var(--bg-secondary); border: 1px solid var(--border-color); cursor: pointer; color: var(--text-secondary); padding: 10px; display: flex; align-items: center; justify-content: center; border-radius: 50%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 900; transition: all 0.2s;"
+        title="Search" onmouseover="this.style.transform='scale(1.1)'; this.style.color='var(--accent-color)'"
+        onmouseout="this.style.transform='scale(1)'; this.style.color='var(--text-secondary)'">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+    </button>
+
+    <!-- Search Bar -->
+    <div id="search-bar"
+        style="display: none; position: fixed; top: 10px; right: 60px; background: var(--bg-secondary); padding: 8px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 1000; align-items: center; gap: 8px; border: 1px solid var(--border-color);">
+        <input type="text" id="search-input" placeholder="Search..."
+            style="background: var(--bg-primary); border: none; color: var(--text-primary); padding: 5px 10px; border-radius: 15px; outline: none; width: 200px;">
+        <span id="search-count"
+            style="font-size: 0.8rem; color: var(--text-secondary); min-width: 40px; text-align: center;">0/0</span>
+        <button id="search-prev"
+            style="background: none; border: none; cursor: pointer; color: var(--text-primary);">▲</button>
+        <button id="search-next"
+            style="background: none; border: none; cursor: pointer; color: var(--text-primary);">▼</button>
+        <button id="search-close"
+            style="background: none; border: none; cursor: pointer; color: var(--text-secondary); margin-left: 5px;">✕</button>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settings-panel" style="display: none;">
+        <h3 style="margin-bottom: 1rem; font-size: 1rem;">Reader Settings</h3>
+
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Font Family</label>
+            <select id="font-family-select" style="width: 100%; padding: 5px;">
+                <option value="'Inter', sans-serif">Inter (English)</option>
+                <option value="'Merriweather', serif">Merriweather (English)</option>
+                <option value="'Pretendard', sans-serif">Pretendard (Korean)</option>
+                <option value="'NanumSquareNeo', sans-serif">NanumSquare Neo (Korean)</option>
+                <option value="'Meiryo', sans-serif">Meiryo (Japanese)</option>
+                <option value="'Noto Sans JP', sans-serif">Noto Sans JP (Japanese)</option>
+                <option value="'Microsoft YaHei', sans-serif">Microsoft YaHei (Chinese)</option>
+                <option value="'PingFang SC', sans-serif">PingFang SC (Chinese)</option>
+                <option value="'Noto Sans SC', sans-serif">Noto Sans SC (Chinese)</option>
+            </select>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Font Size</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="font-decrease" style="padding: 5px 10px;">A-</button>
+                <span id="font-size-display">100%</span>
+                <button id="font-increase" style="padding: 5px 10px;">A+</button>
+            </div>
+        </div>
+
+        <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Theme</label>
+            <div class="theme-options" style="display: flex; gap: 10px;">
+                <button class="theme-btn" data-theme="light"
+                    style="background: #ffffff; color: #000; border: 1px solid #ccc; padding: 5px 10px;">A</button>
+                <button class="theme-btn" data-theme="sepia"
+                    style="background: #f4ecd8; color: #5b4636; border: 1px solid #dcd6c6; padding: 5px 10px;">A</button>
+                <button class="theme-btn" data-theme="dark"
+                    style="background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 5px 10px;">A</button>
+                <button class="theme-btn" data-theme="dark-wood"
+                    style="background: #2d1b0e; color: #e2d9d0; border: 1px solid #d4af37; padding: 5px 10px;"
+                    title="Dark Wood">A</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="reader-content" id="reader-content">
+        {% for chapter in content.chapters %}
+        <div class="chapter" id="chapter-{{ loop.index }}">
+            {{ chapter.content | safe }}
+        </div>
+        <hr style="margin: 3rem 0; border-color: var(--border-color);">
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Search Style -->
+<style>
+    .search-match {
+        background-color: rgba(255, 255, 0, 0.4);
+        border-radius: 2px;
+    }
+
+    .search-match.active {
+        background-color: var(--accent-color);
+        color: white;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    }
+</style>
+
+<!-- Word Lookup Popup -->
+<div id="word-popup" class="popup" style="display: none; max-height: 60vh; overflow-y: auto; padding-bottom: 20px;">
+    <div class="popup-header"
+        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; position: sticky; top: 0; background: var(--bg-secondary); z-index: 10; padding-top: 5px; padding-bottom: 5px; margin-top: -5px;">
+        <div style="display: flex; flex-direction: column;">
+            <strong id="popup-word" style="color: var(--accent-color); word-break: break-word;">Word</strong>
+            <span id="popup-pronunciation"
+                style="font-size: 0.85rem; color: var(--text-secondary); display: none;"></span>
+        </div>
+        <div>
+            <button id="comment-btn" style="background: none; border: none; cursor: pointer; margin-right: 5px;"
+                title="Add Comment">💬</button>
+            <button id="add-bookmark-btn"
+                style="background: none; border: none; cursor: pointer; margin-right: 5px; color: var(--text-secondary);"
+                title="Add Bookmark">🔖</button>
+            <button id="save-word-btn"
+                style="background: none; border: none; cursor: pointer; color: var(--text-secondary);"
+                title="Save Word">⭐</button>
+        </div>
+    </div>
+    <div id="popup-definition" style="font-size: 0.9rem; color: var(--text-primary); white-space: pre-wrap;">
+        Loading definition...
+    </div>
+    <div id="comment-form" style="display: none; margin-top: 10px;">
+        <textarea id="comment-text"
+            style="width: 100%; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; padding: 5px;"
+            rows="3" placeholder="Add a comment..."></textarea>
+        <button id="save-comment-btn"
+            style="margin-top: 5px; width: 100%; padding: 5px; background: var(--accent-color); border: none; border-radius: 4px; cursor: pointer;">Save
+            Comment</button>
+    </div>
+</div>
+
+<!-- Custom Context Menu -->
+<div id="context-menu"
+    style="display: none; position: absolute; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 4px; padding: 5px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1000; min-width: 150px;">
+    <!-- Bookmark Comment Display -->
+    <div id="ctx-comment-display"
+        style="display: none; padding: 8px 15px; border-bottom: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.85rem; background: var(--bg-primary); max-width: 200px; white-space: pre-wrap;">
+        <!-- Comment content will go here -->
+    </div>
+    <div id="ctx-save-btn"
+        style="padding: 8px 15px; cursor: pointer; color: var(--text-primary); font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+        <span>💾</span> Save to Vocabulary
+    </div>
+    <div id="ctx-bookmark-btn"
+        style="padding: 8px 15px; cursor: pointer; color: var(--text-primary); font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+        <span>🔖</span> Bookmark
+    </div>
+    <div id="ctx-bookmark-comment-btn"
+        style="padding: 8px 15px; cursor: pointer; color: var(--text-primary); font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+        <span>📝</span> Bookmark with Comment
+    </div>
+    <div id="ctx-highlight-btn"
+        style="padding: 8px 15px; cursor: pointer; color: var(--text-primary); font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+        <span>🖍️</span> Highlight
+    </div>
+    <div id="ctx-gemini-btn"
+        style="padding: 8px 15px; cursor: pointer; color: var(--text-primary); font-size: 0.9rem; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border-color);">
+        <span>✨</span> Gemini에게 물어보기
+    </div>
+    <div id="ctx-wiki-btn"
+        style="padding: 8px 15px; cursor: pointer; color: var(--text-primary); font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+        <span>🌐</span> Wiki에게 물어보기
+    </div>
+</div>
+
+<!-- Bookmark Comment Modal -->
+<div id="bookmark-comment-modal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
+    <div
+        style="background: var(--bg-secondary); padding: 20px; border-radius: 8px; width: 300px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0; color: var(--text-primary);">Add Bookmark Comment</h3>
+        <textarea id="bookmark-comment-text"
+            style="width: 100%; height: 100px; margin: 10px 0; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary);"></textarea>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button id="cancel-bookmark-comment" style="padding: 5px 10px; cursor: pointer;">Cancel</button>
+            <button id="save-bookmark-comment"
+                style="padding: 5px 10px; background: var(--accent-color); color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast">Word saved!</div>
+
+<!-- Hidden Settings Button to be moved -->
+<button id="settings-btn" class="btn-primary"
+    style="display: none; width: 100%; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color);">⚙️
+    Reader Settings</button>
+
+<!-- Reading Progress Indicator -->
+<div id="reading-progress"
+    style="position: fixed; bottom: 20px; right: 30px; background: rgba(0,0,0,0.6); color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; z-index: 900; font-family: var(--font-ui); pointer-events: none; backdrop-filter: blur(4px); display: none;">
+    0%
+</div>
+
+<script>
+    // Existing Upload Modal Logic (if any) or simplified here as it's cleaner in base
+    // Moving specific reader script logic here
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const readerContent = document.getElementById('reader-content');
+    const popup = document.getElementById('word-popup');
+    const popupWord = document.getElementById('popup-word');
+    const popupPron = document.getElementById('popup-pronunciation');
+    const popupDef = document.getElementById('popup-definition');
+    const commentForm = document.getElementById('comment-form');
+    const commentText = document.getElementById('comment-text');
+    const contextMenu = document.getElementById('context-menu');
+    document.body.appendChild(contextMenu); // Move to body for correct positioning
+    document.body.appendChild(popup); // Move popup to body as well
+    const ctxSaveBtn = document.getElementById('ctx-save-btn');
+    const bookId = {{ book.id }}; // Get book ID from template
+    const bookLang = "{{ content.language }}"; // Get book language
+    const lastReadPosition = "{{ book.last_read_position if book.last_read_position else '' }}";
+    const progressEl = document.getElementById('reading-progress');
+
+    // Settings UI
+    const settingsPanel = document.getElementById('settings-panel');
+    const fontFamilySelect = document.getElementById('font-family-select');
+    const fontSizeDisplay = document.getElementById('font-size-display');
+
+    // Settings State
+    let currentFontSize = parseInt(localStorage.getItem('fontSize')) || 100;
+    let currentTheme = localStorage.getItem('theme') || 'light';
+    let currentFontFamily = localStorage.getItem('fontFamily') || "'Inter', sans-serif";
+
+    function applySettings() {
+        if (readerContent) readerContent.style.fontSize = `${currentFontSize}%`;
+        if (fontSizeDisplay) fontSizeDisplay.textContent = `${currentFontSize}%`;
+        document.body.className = `theme-${currentTheme}`;
+        if (readerContent) readerContent.style.fontFamily = currentFontFamily;
+        if (fontFamilySelect) fontFamilySelect.value = currentFontFamily;
+
+        localStorage.setItem('fontSize', currentFontSize);
+        localStorage.setItem('theme', currentTheme);
+        localStorage.setItem('fontFamily', currentFontFamily);
+    }
+
+    // Initial Apply
+    applySettings();
+
+    // Event Listeners for Settings
+    document.getElementById('font-increase').addEventListener('click', () => {
+        currentFontSize += 10;
+        applySettings();
+    });
+    document.getElementById('font-decrease').addEventListener('click', () => {
+        currentFontSize = Math.max(50, currentFontSize - 10);
+        applySettings();
+    });
+    if (fontFamilySelect) {
+        fontFamilySelect.addEventListener('change', (e) => {
+            currentFontFamily = e.target.value;
+            applySettings();
+        });
+    }
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentTheme = btn.dataset.theme;
+            applySettings();
+        });
+    });
+
+    // Toggle Settings Panel (Custom Event from Sidebar)
+    window.addEventListener('toggle-settings', () => {
+        if (settingsPanel) {
+            if (settingsPanel.style.display === 'none') {
+                settingsPanel.style.display = 'block';
+                settingsPanel.style.bottom = '100px';
+                settingsPanel.style.left = '320px';
+            } else {
+                settingsPanel.style.display = 'none';
+            }
+        }
+    });
+
+    // --- Dictionary & Selection Logic ---
+
+    function getContext(selection, text) {
+        let node = selection.anchorNode;
+
+        // Traverse up to find block element
+        while (node && node.nodeType !== Node.ELEMENT_NODE) {
+            node = node.parentNode;
+        }
+
+        let context = "";
+
+        if (node) {
+            // Get full text of the paragraph/block
+            let fullText = node.innerText || node.textContent;
+
+            // Find the sentence containing the selection
+            // Enhanced sentence splitting including CJK punctuation (。！？)
+            const sentences = fullText.match(/[^.!?。！？]+[.!?。！？]+/g) || [fullText];
+
+            for (let sentence of sentences) {
+                if (sentence.includes(text)) {
+                    context = sentence.trim();
+                    break;
+                }
+            }
+
+            // Fallback if sentence splitting failed
+            if (!context && fullText.includes(text)) {
+                context = fullText.trim();
+            }
+
+            // Check for CJK characters (Kana or Kanji)
+            const isCJK = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FBF]/.test(context);
+
+            if (isCJK) {
+                // Character-based truncation for CJK (max 60 chars)
+                if (context.length > 60) {
+                    const index = context.indexOf(text);
+                    if (index !== -1) {
+                        // Aim for text in middle
+                        const half = Math.floor((60 - text.length) / 2);
+                        let start = Math.max(0, index - half);
+                        let end = Math.min(context.length, index + text.length + half);
+
+                        // Adjust if we hit boundaries
+                        if (end - start < 60) {
+                            if (start === 0) end = Math.min(context.length, 60);
+                            else start = Math.max(0, end - 60);
+                        }
+
+                        context = (start > 0 ? "..." : "") + context.substring(start, end) + (end < context.length ? "..." : "");
+                    } else {
+                        // Fallback if text not found
+                        context = context.substring(0, 60) + "...";
+                    }
+                }
+            } else {
+                // Word-based truncation for non-CJK (max 50 words)
+                const words = context.split(/\s+/);
+                if (words.length > 50) {
+                    const textIndex = words.findIndex(w => w.includes(text.split(' ')[0]));
+                    let start = Math.max(0, textIndex - 25);
+                    let end = Math.min(words.length, start + 50);
+
+                    if (end - start < 50) {
+                        start = Math.max(0, end - 50);
+                    }
+
+                    context = (start > 0 ? "..." : "") + words.slice(start, end).join(" ") + (end < words.length ? "..." : "");
+                }
+            }
+        }
+        return context;
+    }
+
+    let currentWordData = null;
+    let currentSelectionData = null;
+    let currentHighlightId = null; // Track selected highlight for deletion
+    let currentBookmarkId = null; // Track selected bookmark for deletion
+
+    async function showPopup(rect, word, context, range) {
+        popup.style.display = 'block';
+        commentForm.style.display = 'none';
+        popupDef.style.display = 'block';
+
+        // Hide original text if it's long (e.g., > 100 chars), simplify header
+        if (word.length > 100) {
+            popupWord.textContent = "Translation";
+        } else {
+            popupWord.textContent = word;
+        }
+
+        popupPron.style.display = 'none';
+        popupDef.textContent = "Loading...";
+
+        // Initial Position Check
+        updatePopupPosition(rect);
+
+        currentWordData = {
+            original_word: word,
+            context_sentence: context,
+            book_title: "{{ book.title }}",
+            language: bookLang || 'en'
+        };
+        currentSelectionData = { text: word, range: range };
+
+        try {
+            const response = await fetch(`/dictionary/lookup?word=${encodeURIComponent(word)}&context=${encodeURIComponent(context)}&book_lang=${bookLang}&t=${Date.now()}`);
+            const data = await response.json();
+
+            if (data.definitions && data.definitions.length > 0) {
+                // If it's a long text (likely sentences), allow new lines
+                popupDef.innerHTML = data.definitions.map(d => `• ${d}`).join('<br>');
+                currentWordData.translated_word = data.definitions[0];
+            } else {
+                popupDef.textContent = "No definition found.";
+                currentWordData.translated_word = "No definition found.";
+            }
+
+            if (data.examples && data.examples.length > 0) {
+                const exampleHtml = data.examples.map(ex => `<div style="margin-top:4px; font-style:italic; color:var(--text-secondary); font-size:0.85rem;">" ${ex} "</div>`).join('');
+                popupDef.innerHTML += `<div style="margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-color);">${exampleHtml}</div>`;
+            }
+
+            if (data.pronunciation) {
+                popupPron.textContent = `[${data.pronunciation}]`;
+                popupPron.style.display = 'inline';
+                currentWordData.pronunciation = data.pronunciation;
+            }
+
+            // RE-CALCULATE POSITION after content update (height might have changed)
+            updatePopupPosition(rect);
+
+        } catch (e) {
+            console.error(e);
+            popupDef.textContent = "Error fetching definition.";
+            updatePopupPosition(rect); // Update for error text just in case
+        }
+    }
+
+    function updatePopupPosition(rect) {
+        // Reset max-height before measuring to get true desired height
+        popup.style.maxHeight = '60vh';
+
+        const popupHeight = popup.offsetHeight;
+        const popupWidth = popup.offsetWidth;
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        const margin = 10;
+
+        // Try placing above
+        // Calculate Top position if placed above
+        let top = rect.top - popupHeight - margin;
+        let placed = false;
+
+        // Check if fits above
+        if (top >= margin) {
+            placed = true;
+        } else {
+            // Check if fits below
+            const topBelow = rect.bottom + margin;
+            if (topBelow + popupHeight <= viewportHeight - margin) {
+                top = topBelow;
+                placed = true;
+            }
+        }
+
+        // If neither fits perfectly, find which side has more space and clamp height
+        if (!placed) {
+            const spaceAbove = rect.top - margin * 2;
+            const spaceBelow = viewportHeight - rect.bottom - margin * 2;
+
+            if (spaceAbove >= spaceBelow) {
+                // Place above, clamp height
+                popup.style.maxHeight = `${spaceAbove}px`;
+                top = rect.top - document.getElementById('word-popup').offsetHeight - margin;
+                // Note: offsetHeight changes after maxHeight change, need to re-calc top relative to rect
+                // Actually safer to set bottom or calc explicitly: 
+                top = rect.top - spaceAbove - margin + (spaceAbove - popup.offsetHeight);
+                // wait, if we set maxHeight, the height becomes at most spaceAbove.
+                // So top should be rect.top - (new height) - margin.
+                // But we don't know new height instantly without repaint or calc.
+                // Simpler: Set top, and let it grow upwards? No, straight DOM doesn't do that easily with absolute top.
+                // Let's just force top to be (rect.top - spaceAbove - margin) and height to spaceAbove?
+                // No, if content is small, top will be too high.
+
+                // Let's use Bottom positioning for Above placement relative to viewport? 
+                // But popup uses top/left.
+
+                // Retry strict approach:
+                popup.style.maxHeight = `${Math.max(100, spaceAbove)}px`;
+                // We moved logic to "Above", so top is...
+                // We need to measure again or estimate. 
+                // To be safe, let's just use the max-height as the height for positioning if constrained?
+                // Or:
+                top = rect.top - popup.offsetHeight - margin; // This uses OLD height.
+
+                // Correct approach: Set max-height, read height again?
+                // Browser might not update offsetHeight synchronously without forced reflow.
+                // Force reflow:
+                // popup.offsetHeight; 
+                top = rect.top - popup.offsetHeight - margin;
+            } else {
+                // Place below, clamp height
+                popup.style.maxHeight = `${Math.max(100, spaceBelow)}px`;
+                top = rect.bottom + margin;
+            }
+        }
+
+        // Horizontal Logic
+        let left = rect.left + (rect.width / 2) - (popupWidth / 2);
+        if (left < margin) left = margin;
+        if (left + popupWidth > viewportWidth - margin) {
+            left = viewportWidth - popupWidth - margin;
+        }
+
+        popup.style.top = `${top}px`;
+        popup.style.left = `${left}px`;
+    }
+
+    // Handle Double Click (Auto-select word)
+    readerContent.addEventListener('dblclick', (e) => {
+        const selection = window.getSelection();
+        const text = selection.toString().trim();
+
+        if (text && text.length > 0) {
+            // Trigger popup logic
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const context = getContext(selection, text);
+            showPopup(rect, text, context, range);
+        }
+    });
+
+    // Handle text selection/click
+    readerContent.addEventListener('mouseup', (e) => {
+        // If context menu is open, don't show popup
+        if (contextMenu.style.display === 'block') return;
+
+        // Short delay to ensure selection is processed
+        setTimeout(() => {
+            const selection = window.getSelection();
+            const text = selection.toString().trim();
+
+            if (text && text.length > 0) {
+                const range = selection.getRangeAt(0);
+                const rect = range.getBoundingClientRect();
+
+                // Capture context
+                const context = getContext(selection, text);
+
+                showPopup(rect, text, context, range);
+            } else {
+                // Only hide if we didn't just click inside the popup
+                if (!popup.contains(e.target)) {
+                    popup.style.display = 'none';
+                }
+            }
+        }, 10);
+    });
+
+    // Comment Button
+    document.getElementById('comment-btn').addEventListener('click', () => {
+        popupDef.style.display = 'none';
+        commentForm.style.display = 'block';
+        commentText.focus();
+    });
+
+    // Save Comment
+    document.getElementById('save-comment-btn').addEventListener('click', async () => {
+        const comment = commentText.value;
+        if (!comment) return;
+
+        try {
+            const response = await fetch(`/books/${bookId}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: comment,
+                    selected_text: currentWordData.original_word,
+                    cfi_range: generateLocator(currentSelectionData.range) || "TODO"
+                })
+            });
+
+            if (response.ok) {
+                alert('Comment saved!');
+                popup.style.display = 'none';
+            } else {
+                alert('Failed to save comment.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error saving comment.');
+        }
+    });
+
+    // Toast Function
+    function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.className = "show";
+        setTimeout(function () { toast.className = toast.className.replace("show", ""); }, 3000);
+    }
+
+    // Save Word
+    document.getElementById('save-word-btn').addEventListener('click', async () => {
+        if (!currentWordData) return;
+
+        if (!currentWordData.translated_word) {
+            showToast("Please wait for definition to load.");
+            return;
+        }
+
+        try {
+            const response = await fetch('/dictionary/words', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(currentWordData)
+            });
+
+            if (response.ok) {
+                showToast('Word saved to vocabulary!');
+
+                // Visual Highlight (Green) - safeHighlight
+                if (currentSelectionData && currentSelectionData.range) {
+                    safeHighlight(currentSelectionData.range, 'saved-word-span', 'var(--highlight-green)');
+
+                    // Clear selection to show highlight better
+                    window.getSelection().removeAllRanges();
+                }
+
+                // Close popup on success
+                popup.style.display = 'none';
+            } else {
+                showToast('Failed to save word.');
+            }
+        } catch (e) {
+            console.error(e);
+            showToast('Error saving word.');
+        }
+    });
+
+    // Add Bookmark from Popup
+    document.getElementById('add-bookmark-btn').addEventListener('click', () => {
+        // Use existing createBookmark function
+        // It uses 'currentSelectionData' which is set when popup is shown
+        if (currentSelectionData) {
+            createBookmark(null);
+            // Optionally close popup
+            popup.style.display = 'none';
+        }
+    });
+
+    // --- Context Menu ---
+    readerContent.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const selection = window.getSelection();
+        const text = selection.toString().trim();
+        const highlightBtn = document.getElementById('ctx-highlight-btn');
+        const bookmarkBtn = document.getElementById('ctx-bookmark-btn');
+        const highlightSpan = e.target.closest('.highlight-span');
+        const bookmarkSpan = e.target.closest('.bookmark-span');
+
+        if (highlightSpan) {
+            // Clicked on an existing highlight
+            currentHighlightId = highlightSpan.dataset.id;
+            highlightBtn.innerHTML = '<span>🚫</span> Cancel Highlight';
+
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = `${e.pageX}px`;
+            contextMenu.style.top = `${e.pageY}px`;
+        } else if (bookmarkSpan) {
+            // Clicked on an existing bookmark
+            currentBookmarkId = bookmarkSpan.dataset.id;
+            bookmarkBtn.innerHTML = '<span>🚫</span> Cancel Bookmark';
+            document.getElementById('ctx-bookmark-comment-btn').style.display = 'none';
+
+            // Show comment if exists
+            const commentDisplay = document.getElementById('ctx-comment-display');
+            if (bookmarkSpan.dataset.comment && bookmarkSpan.dataset.comment !== "null") {
+                commentDisplay.textContent = "💬 " + bookmarkSpan.dataset.comment;
+                commentDisplay.style.display = 'block';
+            } else {
+                commentDisplay.style.display = 'none';
+            }
+
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = `${e.pageX}px`;
+            contextMenu.style.top = `${e.pageY}px`;
+        } else if (text.length > 0) {
+            // Selected new text
+            currentHighlightId = null;
+            currentBookmarkId = null;
+            highlightBtn.innerHTML = '<span>🖍️</span> Highlight';
+            bookmarkBtn.innerHTML = '<span>🔖</span> Bookmark';
+            document.getElementById('ctx-bookmark-comment-btn').style.display = 'flex';
+            document.getElementById('ctx-comment-display').style.display = 'none';
+
+            const range = selection.getRangeAt(0);
+            currentSelectionData = { text: text, range: range };
+            currentWordData = {
+                original_word: text,
+                context_sentence: getContext(selection, text),
+                book_title: "{{ book.title }}",
+                language: bookLang || 'en'
+            };
+
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = `${e.pageX}px`;
+            contextMenu.style.top = `${e.pageY}px`;
+        }
+    });
+
+    // Context Menu Actions
+    ctxSaveBtn.addEventListener('click', () => {
+        document.getElementById('save-word-btn').click();
+        contextMenu.style.display = 'none';
+    });
+
+    document.getElementById('ctx-bookmark-btn').addEventListener('click', async () => {
+        if (currentBookmarkId) {
+            // Cancel Bookmark
+            try {
+                const response = await fetch(`/books/bookmarks/${currentBookmarkId}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    const span = document.querySelector(`.bookmark-span[data-id="${currentBookmarkId}"]`);
+                    if (span) {
+                        const parent = span.parentNode;
+                        while (span.firstChild) parent.insertBefore(span.firstChild, span);
+                        parent.removeChild(span);
+                    }
+                    showToast('Bookmark removed');
+                }
+            } catch (e) { console.error(e); }
+        } else {
+            // Create Simple Bookmark
+            createBookmark(null);
+        }
+        contextMenu.style.display = 'none';
+    });
+
+    // Bookmark with Comment Logic
+    const bookmarkModal = document.getElementById('bookmark-comment-modal');
+    const bookmarkCommentText = document.getElementById('bookmark-comment-text');
+
+    document.getElementById('ctx-bookmark-comment-btn').addEventListener('click', () => {
+        contextMenu.style.display = 'none';
+        bookmarkCommentText.value = '';
+        bookmarkModal.style.display = 'flex';
+    });
+
+    document.getElementById('cancel-bookmark-comment').addEventListener('click', () => {
+        bookmarkModal.style.display = 'none';
+    });
+
+    document.getElementById('save-bookmark-comment').addEventListener('click', () => {
+        const comment = bookmarkCommentText.value;
+        createBookmark(comment);
+        bookmarkModal.style.display = 'none';
+    });
+
+    function safeHighlight(range, className, color, dataset = {}) {
+        try {
+            // Direct attempt first (simplest case)
+            if (range.commonAncestorContainer.nodeType === Node.TEXT_NODE ||
+                (range.startContainer === range.endContainer && range.startContainer.nodeType === Node.TEXT_NODE)) {
+                const span = document.createElement('span');
+                span.className = className;
+                if (color) span.style.backgroundColor = color;
+                span.style.borderRadius = "2px";
+                for (const key in dataset) span.dataset[key] = dataset[key];
+                range.surroundContents(span);
+                return [span];
+            }
+
+            // Complex case: Extract contents is destructive to block structure if crossing blocks.
+            // Better approach: createTreeWalker over the range.
+
+            const startNode = range.startContainer;
+            const endNode = range.endContainer;
+            const commonAncestor = range.commonAncestorContainer;
+
+            const walker = document.createTreeWalker(
+                commonAncestor,
+                NodeFilter.SHOW_TEXT,
+                {
+                    acceptNode: (node) => {
+                        if (range.intersectsNode(node)) return NodeFilter.FILTER_ACCEPT;
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                }
+            );
+
+            const nodesToWrap = [];
+            let currentNode;
+            while (currentNode = walker.nextNode()) {
+                nodesToWrap.push(currentNode);
+            }
+
+            if (nodesToWrap.length === 0) return []; // Should not happen if range is valid
+
+            const spans = [];
+
+            nodesToWrap.forEach((node) => {
+                const span = document.createElement('span');
+                span.className = className;
+                if (color) span.style.backgroundColor = color;
+                span.style.borderRadius = "2px";
+                for (const key in dataset) span.dataset[key] = dataset[key];
+
+                const rangePart = document.createRange();
+
+                // Determine start offset
+                let start = 0;
+                if (node === startNode) start = range.startOffset;
+
+                // Determine end offset
+                let end = node.length;
+                if (node === endNode) end = range.endOffset;
+
+                // Skip empty wraps (e.g. if startOffset == length or endOffset == 0)
+                if (start < end) {
+                    rangePart.setStart(node, start);
+                    rangePart.setEnd(node, end);
+                    rangePart.surroundContents(span);
+                    spans.push(span);
+                }
+            });
+            return spans;
+
+        } catch (e) {
+            console.error("Highlight error:", e);
+            showToast("Highlight failed slightly (complex layout)");
+            return [];
+        }
+    }
+
+    async function createBookmark(comment) {
+        try {
+            const body = {
+                cfi_range: generateLocator(currentSelectionData.range) || "TODO",
+                label: currentSelectionData.text.substring(0, 20) + "..."
+            };
+            if (comment) {
+                body.comment = comment;
+            }
+
+            const response = await fetch(`/books/${bookId}/bookmarks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (response.ok) {
+                const data = await response.json();
+                showToast('Bookmark added!');
+
+                // Visual Highlight (Blue) - Use safeHighlight
+                if (currentSelectionData && currentSelectionData.range) {
+                    const dataset = { id: data.id || "" };
+                    if (comment) dataset.comment = comment;
+
+                    safeHighlight(currentSelectionData.range, 'bookmark-span', 'var(--highlight-blue)', dataset);
+                }
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    document.getElementById('ctx-highlight-btn').addEventListener('click', async () => {
+        if (currentHighlightId) {
+            // Cancel Highlight
+            try {
+                const response = await fetch(`/books/highlights/${currentHighlightId}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    // Remove highlight from DOM
+                    const spans = document.querySelectorAll(`.highlight-span[data-id="${currentHighlightId}"]`);
+                    spans.forEach(span => {
+                        const parent = span.parentNode;
+                        while (span.firstChild) parent.insertBefore(span.firstChild, span);
+                        parent.removeChild(span);
+                    });
+                    showToast('Highlight removed');
+                }
+            } catch (e) { console.error(e); }
+        } else if (currentSelectionData && currentSelectionData.range) {
+            // Create Highlight
+            try {
+                const response = await fetch(`/books/${bookId}/highlights`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        selected_text: currentSelectionData.text,
+                        cfi_range: generateLocator(currentSelectionData.range) || "TODO",
+                        color: "yellow"
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const dataset = {};
+                    if (data.id) dataset.id = data.id;
+
+                    safeHighlight(currentSelectionData.range, 'highlight-span', 'var(--highlight-yellow)', dataset);
+                    showToast('Text highlighted');
+                }
+            } catch (e) { console.error(e); }
+        }
+        contextMenu.style.display = 'none';
+    });
+
+    // Ask Gemini
+    document.getElementById('ctx-gemini-btn').addEventListener('click', () => {
+        if (currentSelectionData && currentSelectionData.text) {
+            const textToAsk = `"${currentSelectionData.text}"`;
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(textToAsk).then(() => {
+                // Open Gemini in new tab
+                window.open('https://gemini.google.com/app', 'gemini_tab');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                // Fallback: Try to open anyway
+                window.open('https://gemini.google.com/app', 'gemini_tab');
+            });
+        }
+        contextMenu.style.display = 'none';
+    });
+
+    // Ask Wiki
+    document.getElementById('ctx-wiki-btn').addEventListener('click', () => {
+        if (currentSelectionData && currentSelectionData.text) {
+            const text = currentSelectionData.text;
+
+            // Determine language for Wikipedia
+            // Default to 'en' if bookLang is missing or weird
+            let lang = 'en';
+            if (bookLang) {
+                // Handle codes like 'en-US', 'ja', 'zh-CN'
+                const shortLang = bookLang.split('-')[0].toLowerCase();
+                if (shortLang) lang = shortLang;
+            }
+
+            // Construct URL
+            const url = `https://${lang}.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(text)}`;
+
+            // Open in new tab
+            window.open(url, '_blank');
+        }
+        contextMenu.style.display = 'none';
+    });
+
+    // Close context menu when clicking elsewhere
+    document.addEventListener('mousedown', (e) => {
+        if (!contextMenu.contains(e.target)) {
+            contextMenu.style.display = 'none';
+        }
+    });
+
+    // --- Locator System (Simplified CFI) ---
+
+    function generateLocator(range) {
+        // Find the nearest parent block with an ID
+        let node = range.startContainer;
+        while (node && node.nodeType !== Node.ELEMENT_NODE) {
+            node = node.parentNode;
+        }
+
+        // Walk up until we find a block with an ID (assigned by our observer logic)
+        let container = node;
+        while (container && !container.id) {
+            container = container.parentNode;
+            if (container === readerContent) break; // Safety
+        }
+
+        if (!container || !container.id) return null;
+
+        // Calculate offsets relative to this container's text content
+        const startOffset = getOffsetRelativeToContainer(container, range.startContainer, range.startOffset);
+        const endOffset = getOffsetRelativeToContainer(container, range.endContainer, range.endOffset);
+
+        return JSON.stringify({
+            id: container.id,
+            start: startOffset,
+            end: endOffset,
+            text: range.toString()
+        });
+    }
+
+    function getOffsetRelativeToContainer(container, node, offset) {
+        let totalOffset = 0;
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+
+        let currentNode;
+        while (currentNode = walker.nextNode()) {
+            if (currentNode === node) {
+                totalOffset += offset;
+                break;
+            }
+            totalOffset += currentNode.length;
+        }
+        return totalOffset;
+    }
+
+    // --- Search Logic ---
+    const toggleSearchBtn = document.getElementById('toggle-search-btn');
+    const searchBar = document.getElementById('search-bar');
+    const searchInput = document.getElementById('search-input');
+    const searchPrevBtn = document.getElementById('search-prev');
+    const searchNextBtn = document.getElementById('search-next');
+    const searchCloseBtn = document.getElementById('search-close');
+    const searchCountSpan = document.getElementById('search-count');
+
+    let searchMatches = [];
+    let currentMatchIndex = -1;
+
+    toggleSearchBtn.addEventListener('click', () => {
+        if (searchBar.style.display === 'none') {
+            searchBar.style.display = 'flex';
+            searchInput.focus();
+        } else {
+            closeSearch();
+        }
+    });
+
+    searchCloseBtn.addEventListener('click', closeSearch);
+
+    function closeSearch() {
+        searchBar.style.display = 'none';
+        clearSearchResults();
+        searchInput.value = '';
+    }
+
+    function clearSearchResults() {
+        // Remove .search-match spans but keep content
+        const matches = document.querySelectorAll('.search-match');
+        matches.forEach(span => {
+            const parent = span.parentNode;
+            while (span.firstChild) parent.insertBefore(span.firstChild, span);
+            parent.removeChild(span);
+        });
+        // Normalize text nodes to merge them back
+        readerContent.normalize();
+        searchMatches = [];
+        currentMatchIndex = -1;
+        updateSearchCount();
+    }
+
+    let lastSearchedQuery = "";
+
+    // searchInput.addEventListener('input', (e) => {
+    //     const query = e.target.value;
+    //     if (query.length < 2) {
+    //         clearSearchResults();
+    //         return;
+    //     }
+    //     // Debounce slightly if needed, but for local it's fast
+    //     performSearch(query);
+    // });
+
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const query = searchInput.value;
+            if (!query) return;
+
+            if (query === lastSearchedQuery && searchMatches.length > 0) {
+                // Same query, go to next match
+                if (e.shiftKey) {
+                    navigateSearch(-1);
+                } else {
+                    navigateSearch(1);
+                }
+            } else {
+                // New search
+                performSearch(query);
+                lastSearchedQuery = query;
+            }
+        } else if (e.key === 'Escape') {
+            closeSearch();
+        }
+    });
+
+    searchNextBtn.addEventListener('click', () => navigateSearch(1));
+    searchPrevBtn.addEventListener('click', () => navigateSearch(-1));
+
+    function performSearch(query) {
+        clearSearchResults();
+        if (!query) return;
+
+        // TreeWalker to find text nodes
+        const walker = document.createTreeWalker(readerContent, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        let node;
+        while (node = walker.nextNode()) {
+            textNodes.push(node);
+        }
+
+        // We need to match case-insensitive
+        const lowerQuery = query.toLowerCase();
+
+        // Iterate backwards so we don't mess up indices when replacing
+        // actually replacing creates new spans, so we need to be careful.
+        // Easier approach: Collect all matches first then wrap them.
+
+        let matchCount = 0;
+
+        // We will traverse and build a new HTML structure or careful replacement
+        // safer: regex replace on text nodes? No, that breaks simple traversal.
+
+        // Implementation:
+        // Find all text nodes containing the text
+        // For each node, split it into 3 parts: before, match, after
+        // Wrap match in span.
+
+        // NOTE: If one text node has multiple matches, we need to handle that.
+
+        for (const textNode of textNodes) {
+            const text = textNode.nodeValue;
+            const lowerText = text.toLowerCase();
+            let index = lowerText.indexOf(lowerQuery);
+
+            if (index !== -1) {
+                // Found a match in this text node (at least one)
+                // We need to handle multiple matches in same node loop
+                // But replacing the node invalidates it.
+
+                // Strategy: Create a fragment for replacement
+                const fragment = document.createDocumentFragment();
+                let lastIndex = 0;
+
+                let hasMatch = false;
+
+                while (index !== -1) {
+                    hasMatch = true;
+                    // Text before
+                    if (index > lastIndex) {
+                        fragment.appendChild(document.createTextNode(text.substring(lastIndex, index)));
+                    }
+
+                    // The Match
+                    const matchSpan = document.createElement('span');
+                    matchSpan.className = 'search-match';
+                    matchSpan.textContent = text.substring(index, index + query.length);
+                    fragment.appendChild(matchSpan);
+                    searchMatches.push(matchSpan);
+                    matchCount++;
+
+                    lastIndex = index + query.length;
+                    index = lowerText.indexOf(lowerQuery, lastIndex);
+                }
+
+                if (hasMatch) {
+                    // Text after
+                    if (lastIndex < text.length) {
+                        fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+                    }
+
+                    // Replace original node
+                    textNode.parentNode.replaceChild(fragment, textNode);
+                }
+            }
+        }
+
+        // Sort matches by DOM position (actually push order is likely correct if traverse order is correct? 
+        // Walker is document order. so yes.)
+
+        updateSearchCount();
+
+        if (searchMatches.length > 0) {
+            navigateSearch(1, true); // Go to first
+        }
+    }
+
+    function navigateSearch(direction, jumpToFirst = false) {
+        if (searchMatches.length === 0) return;
+
+        // Remove active class from current
+        if (currentMatchIndex >= 0 && currentMatchIndex < searchMatches.length) {
+            searchMatches[currentMatchIndex].classList.remove('active');
+        }
+
+        if (jumpToFirst) {
+            currentMatchIndex = 0;
+        } else {
+            currentMatchIndex += direction;
+            if (currentMatchIndex >= searchMatches.length) currentMatchIndex = 0; // Loop
+            if (currentMatchIndex < 0) currentMatchIndex = searchMatches.length - 1; // Loop
+        }
+
+        const currentMatch = searchMatches[currentMatchIndex];
+        currentMatch.classList.add('active');
+
+        // Scroll into view
+        currentMatch.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+        });
+
+        updateSearchCount();
+    }
+
+    function updateSearchCount() {
+        if (searchMatches.length > 0) {
+            searchCountSpan.textContent = `${currentMatchIndex + 1}/${searchMatches.length}`;
+        } else {
+            searchCountSpan.textContent = "0/0";
+        }
+    }
+
+
+    function restoreLocator(locatorStr, color, type, id, comment) {
+        if (!locatorStr || locatorStr === "TODO") return;
+
+        try {
+            const locator = JSON.parse(locatorStr);
+            const container = document.getElementById(locator.id);
+            if (!container) return;
+
+            const range = document.createRange();
+
+            // Find start node and offset
+            let currentStart = 0;
+            let startNode = null, startOffset = 0;
+            let endNode = null, endOffset = 0;
+
+            const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+
+            while (node = walker.nextNode()) {
+                const len = node.length;
+
+                // Check Start
+                if (!startNode && currentStart + len >= locator.start) {
+                    startNode = node;
+                    startOffset = locator.start - currentStart;
+                }
+
+                // Check End
+                if (!endNode && currentStart + len >= locator.end) {
+                    endNode = node;
+                    endOffset = locator.end - currentStart;
+                    break; // Found both
+                }
+
+                currentStart += len;
+            }
+
+            if (startNode && endNode) {
+                range.setStart(startNode, startOffset);
+                range.setEnd(endNode, endOffset);
+
+                if (type === 'highlight') {
+                    const span = document.createElement('span');
+                    span.style.backgroundColor = color || 'var(--highlight-yellow)';
+                    span.style.borderRadius = '2px';
+                    span.classList.add('highlight-span');
+                    if (id) span.dataset.id = id;
+                    range.surroundContents(span);
+                } else if (type === 'bookmark') {
+                    const span = document.createElement('span');
+                    span.style.backgroundColor = 'var(--highlight-blue)'; // Blue for bookmarks
+                    span.style.borderRadius = '2px';
+                    span.classList.add('bookmark-span');
+                    if (id) span.dataset.id = id;
+                    if (comment) span.dataset.comment = comment;
+                    range.surroundContents(span);
+                }
+            }
+        } catch (e) {
+            console.error("Error restoring locator:", e);
+        }
+    }
+
+    // Basic text finder for restoring highlights
+    function findAndHighlight(root, text, color, id, type) {
+        if (!text || text.length < 3) return;
+
+        // Create a tree walker to find text nodes
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        while (node = walker.nextNode()) {
+            const index = node.nodeValue.indexOf(text);
+            if (index !== -1) {
+                // Found the text! Now wrap it.
+                const range = document.createRange();
+                range.setStart(node, index);
+                range.setEnd(node, index + text.length);
+
+                const span = document.createElement('span');
+                span.style.backgroundColor = color;
+                span.style.borderRadius = '2px';
+                span.classList.add('highlight-span');
+                if (id) span.dataset.id = id;
+                if (type) span.dataset.type = type;
+
+                range.surroundContents(span);
+                return; // Stop after first match for now
+            }
+        }
+    }
+
+    // Load Highlights (Mockup)
+    async function loadHighlights() {
+        try {
+            const response = await fetch(`/books/${bookId}/highlights`);
+            if (response.ok) {
+                const highlights = await response.json();
+                highlights.forEach(h => {
+                    // Try to restore using CFI first
+                    if (h.cfi_range && h.cfi_range !== "TODO") {
+                        restoreLocator(h.cfi_range, h.color || 'var(--highlight-yellow)', 'highlight', h.id);
+                    } else {
+                        // Fallback to text search
+                        findAndHighlight(readerContent, h.selected_text, h.color || 'var(--highlight-yellow)', h.id, 'highlight');
+                    }
+                });
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function loadBookmarks() {
+        try {
+            const response = await fetch(`/books/${bookId}/bookmarks`);
+            if (response.ok) {
+                const bookmarks = await response.json();
+                bookmarks.forEach(b => {
+                    if (b.cfi_range && b.cfi_range !== "TODO") {
+                        restoreLocator(b.cfi_range, null, 'bookmark', b.id, b.comment);
+                    }
+                });
+                return bookmarks; // Return for chaining
+            }
+        } catch (e) { console.error(e); }
+        return [];
+    }
+
+    async function saveProgress(element) {
+        if (!element || !element.id) return;
+
+        // Update UI Calculation
+        if (contentBlocks.length > 0) {
+            const parts = element.id.split('-');
+            const index = parseInt(parts[parts.length - 1]);
+            // Calculate percentage with 2 decimal places
+            const percent = ((index + 1) / contentBlocks.length * 100).toFixed(2);
+
+            if (progressEl) {
+                progressEl.style.display = 'block';
+                progressEl.textContent = `${percent}%`;
+            }
+        }
+
+        try {
+            await fetch(`/books/${bookId}/progress`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ position: `#${element.id}` })
+            });
+            // console.log("Saved progress:", element.id);
+        } catch (e) {
+            console.error("Failed to save progress", e);
+        }
+    }
+
+    // --- Progress Tracking (Scroll Based) ---
+
+    // 1. Assign IDs to all content blocks if missing
+    let contentBlocks = [];
+    function initContentBlocks() {
+        const blocks = document.querySelectorAll('.chapter p, .chapter h1, .chapter h2, .chapter h3, .chapter div');
+        blocks.forEach((el, index) => {
+            if (!el.id) {
+                el.id = `content-block-${index}`;
+            }
+        });
+        contentBlocks = Array.from(blocks);
+    }
+    initContentBlocks();
+
+    // 2. Find the current top-most visible element
+    function getVisibleBlock() {
+        const headerHeight = 80; // Approximate header height
+        let bestBlock = null;
+        let minDiff = Infinity;
+
+        // Optimization: Binary search is hard with varying heights/positions.
+        // Linear scan is okay for < 1000 blocks, but efficient check is better.
+        // We only check blocks that are effectively in view.
+
+        // Simpler approach: `document.elementFromPoint(x, y)` 
+        // This is extremely efficient.
+        // We want the element at horizontal center, and say, 100px from top (below header).
+        const x = window.innerWidth / 2;
+        const y = headerHeight + 50;
+
+        let el = document.elementFromPoint(x, y);
+
+        // Traverse up to find a tracked block
+        while (el && el !== document.body) {
+            if (el.id && el.id.startsWith('content-block-')) {
+                return el;
+            }
+            el = el.parentElement;
+        }
+
+        // Fallback if empty space or layout issue: Linear scan (heavy but reliable)
+        // Only if elementFromPoint failed
+        for (const block of contentBlocks) {
+            const rect = block.getBoundingClientRect();
+            if (rect.top >= headerHeight && rect.top < window.innerHeight) {
+                return block;
+            }
+        }
+
+        return null;
+    }
+
+    // 3. Debounced Save Function
+    let saveTimeout;
+    function debouncedSaveProgress() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(async () => {
+            const block = getVisibleBlock();
+            if (block) {
+                await saveProgress(block);
+            }
+        }, 1000); // Save after 1 second of no scrolling
+    }
+
+    window.addEventListener('scroll', debouncedSaveProgress);
+
+    // Also save on page hide/unload to catch "leaving" events
+    window.addEventListener('beforeunload', () => {
+        const block = getVisibleBlock();
+        if (block) {
+            // Use sendBeacon for more reliability on close? 
+            // Or just try fetch (might be cancelled).
+            // Navigator.sendBeacon only supports string/Blob/FormData.
+            const blob = new Blob([JSON.stringify({ position: `#${block.id}` })], { type: 'application/json' });
+            navigator.sendBeacon(`/books/${bookId}/progress_beacon`, blob);
+        }
+    });
+
+    // Update LocalStorage for Sidebar "Current Book"
+    localStorage.setItem('currentBook', JSON.stringify({
+        id: bookId,
+        title: "{{ book.title }}"
+    }));
+
+    // Trigger sidebar update event
+    window.dispatchEvent(new Event('storage'));
+
+    async function initializeReader() {
+        await loadHighlights();
+        await loadBookmarks();
+
+        // Check for bookmark_id in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookmarkId = urlParams.get('bookmark_id');
+
+        if (bookmarkId) {
+            // Give a slight delay for DOM rendering if needed, though restoreLocator should be synchronous
+            setTimeout(() => {
+                const bookmarkSpan = document.querySelector(`.bookmark-span[data-id="${bookmarkId}"]`);
+                if (bookmarkSpan) {
+                    bookmarkSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Add a temporary flash effect
+                    bookmarkSpan.style.transition = 'background-color 0.5s';
+                    const originalColor = bookmarkSpan.style.backgroundColor;
+                    bookmarkSpan.style.backgroundColor = 'var(--accent-color)';
+                    setTimeout(() => {
+                        bookmarkSpan.style.backgroundColor = originalColor;
+                    }, 1000);
+                } else {
+                    console.warn(`Bookmark ${bookmarkId} not found in DOM.`);
+                }
+            }, 500);
+        } else {
+            // Check for search param (from Vocabulary context link)
+            const searchQuery = urlParams.get('search');
+            if (searchQuery) {
+                setTimeout(() => {
+                    // Open search bar for visibility
+                    const searchBar = document.getElementById('search-bar');
+                    const searchInput = document.getElementById('search-input');
+                    searchBar.style.display = 'flex';
+                    searchInput.value = searchQuery;
+
+                    // Use Robust Fuzzy Search
+                    const success = fuzzyFindAndScroll(searchQuery);
+
+                    if (success) {
+                        showToast('Navigated to context');
+                    } else {
+                        showToast('Context not found');
+                    }
+
+                }, 800); // 800ms delay to ensure everything is really ready
+            } else if (lastReadPosition) {
+                // Restore last read position
+                setTimeout(() => {
+                    try {
+                        // lastReadPosition is typically "#content-block-X"
+                        const targetId = lastReadPosition.replace('#', '');
+                        const targetElement = document.getElementById(targetId);
+                        if (targetElement) {
+                            // Restore to top (with offset for header/visual balance) to match save logic
+                            targetElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+                            // Offset by header height (80px) to ensure consistent visibility check
+                            window.scrollBy(0, -80);
+
+                            console.log("Restored last read position:", lastReadPosition);
+                            // Update progress UI immediately
+                            saveProgress(targetElement);
+                        }
+                    } catch (e) {
+                        console.error("Error restoring last read position:", e);
+                    }
+                }, 500); // 500ms delay to ensure layout is ready
+            } else {
+                // No saved position, show 0% (or current top)
+                setTimeout(() => {
+                    const block = getVisibleBlock();
+                    if (block) saveProgress(block);
+                }, 500);
+            }
+        }
+    }
+
+
+    // --- Robust Fuzzy Finder ---
+    function fuzzyFindAndScroll(query) {
+        if (!query) return false;
+
+        // 1. Clean Query: Remove "..." and normalize
+        // Remove leading/trailing ellipsis that might be added by truncation
+        let rawQuery = query.replace(/^\.\.\./, '').replace(/\.\.\.$/, '');
+
+        // Normalize: Remove all whitespace and punctuation, lowercase
+        const normalizedQuery = rawQuery.replace(/[\s\p{P}]+/gu, '').toLowerCase();
+
+        if (normalizedQuery.length < 5) {
+            // If query is too short after normalization, fallback to simple find
+            return window.find(query);
+        }
+
+        // 2. Build Map of Text Nodes
+        const contentWalker = document.createTreeWalker(readerContent, NodeFilter.SHOW_TEXT, null, false);
+        let nodes = [];
+        let fullNormalizedText = "";
+        let nodeMap = []; // Maps index in fullText to node info
+
+        let currentNode;
+        while (currentNode = contentWalker.nextNode()) {
+            const val = currentNode.nodeValue;
+            // Normalize this node's text
+            const normVal = val.replace(/[\s\p{P}]+/gu, '').toLowerCase();
+
+            if (normVal.length > 0) {
+                nodes.push({ node: currentNode, length: normVal.length, original: val });
+                // We map the START index of this node in the full string
+                nodeMap.push({ start: fullNormalizedText.length, node: currentNode, len: normVal.length });
+                fullNormalizedText += normVal;
+            }
+        }
+
+        // 3. Find Match
+        const matchIndex = fullNormalizedText.indexOf(normalizedQuery);
+
+        if (matchIndex === -1) {
+            console.log("Fuzzy search failed.");
+            return false;
+        }
+
+        // 4. Map back to Node
+        // Find which node contains the matchIndex
+        let targetNode = null;
+        for (const info of nodeMap) {
+            if (matchIndex >= info.start && matchIndex < info.start + info.len) {
+                targetNode = info.node;
+                break;
+            }
+        }
+
+        if (targetNode) {
+            // Scroll to it
+            targetNode.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Highlight (Visual Only)
+            const range = document.createRange();
+            range.selectNode(targetNode);
+            safeHighlight(range, 'search-match', null);
+
+            // Update progress explicitly
+            let blockStart = targetNode.parentElement;
+            while (blockStart && (!blockStart.id || !blockStart.id.startsWith('content-block-'))) {
+                blockStart = blockStart.parentElement;
+            }
+            if (blockStart) {
+                saveProgress(blockStart);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+
+
+    // Initialize
+    initializeReader();
+</script>
+{% endblock %}

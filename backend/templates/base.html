@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Simon's Reader{% endblock %}</title>
+    <link rel="icon" href="/static/favicon.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&family=Playfair+Display:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" as="style" crossorigin
+        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-neo.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css?v=2">
+    {% block head %}{% endblock %}
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <!-- Image-Based Sidebar Menu -->
+            <div class="sidebar-menu-container" style="position: relative; width: 90%; margin: 0 auto;">
+                <img src="/static/images/sidebar_menu.png?v=2" alt="Sidebar Menu"
+                    style="width: 100%; display: block; border-radius: 4px;">
+
+                <!-- Clickable Overlays -->
+                <!-- Library (Excluding Title) -->
+                <a href="/" class="menu-overlay" style="top: 18%; height: 25%;" title="Library"></a>
+
+                <!-- Vocabulary -->
+                <a href="/vocabulary" class="menu-overlay" style="top: 45%; height: 25%;" title="Vocabulary"></a>
+
+                <!-- Bookmarks -->
+                <a href="/bookmarks" class="menu-overlay" style="top: 72%; height: 25%;" title="Bookmarks"></a>
+            </div>
+
+            <!-- Sidebar Bottom Image UI -->
+            <div class="sidebar-bottom-container"
+                style="position: relative; width: 90%; margin: 0 auto; margin-top: auto;">
+                <img src="/static/images/sidebar_bottom.png" alt="Sidebar Bottom"
+                    style="width: 100%; display: block; border-radius: 4px;">
+
+                <!-- Current Book Title Overlay -->
+                <div id="current-book-overlay"
+                    style="position: absolute; top: 28%; left: 15%; width: 70%; text-align: center; display: none;">
+                    <a id="current-book-link" href="#"
+                        style="text-decoration: none; color: #d4af37; font-family: var(--font-display); font-size: 1.1rem; text-shadow: 0 1px 2px rgba(0,0,0,0.8); line-height: 1.2;">
+                        <span id="current-book-title">Book Title</span>
+                    </a>
+                </div>
+
+                <!-- Reader Settings Button Overlay -->
+                <div id="settings-btn-overlay" class="menu-overlay"
+                    style="position: absolute; top: 76%; left: 7%; width: 86%; height: 9%; cursor: pointer;"
+                    title="Reader Settings"></div>
+
+                <!-- Upload Book Button Overlay -->
+                <div id="upload-btn-overlay" class="menu-overlay"
+                    style="position: absolute; top: 87%; left: 7%; width: 86%; height: 9%; cursor: pointer;"
+                    title="Upload Book"></div>
+            </div>
+
+            <!-- Hidden elements for logic compatibility -->
+            <div id="sidebar-settings-container" style="display: none;"></div>
+        </aside>
+
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="upload-modal" class="modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="modal-content"
+            style="background: var(--bg-parchment); padding: 2rem; border-radius: 0.5rem; width: 400px; border: 2px solid var(--border-brass); box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <h2 style="margin-bottom: 1.5rem; color: var(--text-ink); font-family: var(--font-display);">Upload Book
+            </h2>
+            <form id="upload-form" enctype="multipart/form-data">
+                <div style="margin-bottom: 1.5rem;">
+                    <label for="file-upload"
+                        style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Select File
+                        (.epub, .docx, .txt, .pdf)</label>
+                    <input type="file" id="file-upload" name="file" accept=".epub,.docx,.txt,.pdf" required
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-brass); border-radius: 0.25rem; background: #fff; color: var(--text-ink);">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" id="cancel-upload"
+                        style="padding: 0.5rem 1rem; background: transparent; border: 1px solid var(--border-brass); color: var(--text-muted); border-radius: 0.25rem; cursor: pointer;">Cancel</button>
+                    <button type="submit" class="btn-primary" style="width: auto;">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Upload Modal Logic
+        const uploadBtnOverlay = document.getElementById('upload-btn-overlay');
+        const uploadModal = document.getElementById('upload-modal');
+        const cancelUpload = document.getElementById('cancel-upload');
+        const uploadForm = document.getElementById('upload-form');
+
+        if (uploadBtnOverlay) {
+            uploadBtnOverlay.addEventListener('click', () => {
+                uploadModal.style.display = 'flex';
+            });
+        }
+
+        cancelUpload.addEventListener('click', () => {
+            uploadModal.style.display = 'none';
+        });
+
+        uploadModal.addEventListener('click', (e) => {
+            if (e.target === uploadModal) {
+                uploadModal.style.display = 'none';
+            }
+        });
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(uploadForm);
+            const submitBtn = uploadForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = "Uploading...";
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/books/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Upload failed');
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Upload error');
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Settings Button Logic
+        const settingsBtnOverlay = document.getElementById('settings-btn-overlay');
+        if (settingsBtnOverlay) {
+            settingsBtnOverlay.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Dispatch custom event for reader.html to handle
+                window.dispatchEvent(new CustomEvent('toggle-settings'));
+            });
+        }
+
+        // Restore Current Book Link
+        const currentBookOverlay = document.getElementById('current-book-overlay');
+        const currentBookLink = document.getElementById('current-book-link');
+        const currentBookTitle = document.getElementById('current-book-title');
+
+        function updateCurrentBookDisplay() {
+            const data = localStorage.getItem('currentBook');
+            if (data) {
+                const book = JSON.parse(data);
+                if (book && book.id) {
+                    currentBookOverlay.style.display = 'block';
+                    currentBookLink.href = `/reader/${book.id}`;
+                    currentBookTitle.textContent = book.title;
+                }
+            }
+        }
+
+        updateCurrentBookDisplay();
+
+        // Listen for storage updates (from reader page)
+        window.addEventListener('storage', () => {
+            updateCurrentBookDisplay();
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

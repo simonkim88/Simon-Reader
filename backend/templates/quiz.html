@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Vocabulary Quiz - Simon Reader{% endblock %}
+
+{% block content %}
+<div class="library-header">
+    <h2>Vocabulary Quiz</h2>
+</div>
+
+<div id="quiz-container"
+    style="background: var(--bg-secondary); border-radius: 0.75rem; padding: 2rem; border: 1px solid var(--border-color); max-width: 600px; margin: 0 auto; text-align: center;">
+
+    <!-- Loading State -->
+    <div id="loading-state">
+        <p style="font-size: 1.2rem; color: var(--text-secondary);">Loading quiz...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="error-state" style="display: none;">
+        <p id="error-message" style="color: var(--text-primary); margin-bottom: 1rem;"></p>
+        <a href="/vocabulary" class="btn-primary" style="text-decoration: none; display: inline-block;">Back to
+            Vocabulary</a>
+    </div>
+
+    <!-- Quiz Interface -->
+    <div id="quiz-interface" style="display: none;">
+        <div
+            style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary);">
+            <span id="progress-text">Question 1/10</span>
+            <span id="score-text">Score: 0</span>
+        </div>
+
+        <div class="card"
+            style="background: var(--bg-primary); padding: 2rem; border-radius: 0.5rem; margin-bottom: 2rem; border: 1px solid var(--border-color); box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h1 id="question-word" style="font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--accent-color);">Word
+            </h1>
+            <p id="question-pron" style="color: var(--text-secondary); font-size: 1rem; min-height: 1.5rem;"></p>
+        </div>
+
+        <div id="options-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <!-- Options will be injected here -->
+        </div>
+
+        <div id="feedback-area" style="margin-top: 1.5rem; min-height: 2rem; font-weight: bold;"></div>
+
+        <button id="next-btn" class="btn-primary" style="margin-top: 1.5rem; display: none; width: 100%;">Next
+            Question</button>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="result-screen" style="display: none;">
+        <h2 style="font-size: 2rem; margin-bottom: 1rem; color: var(--text-primary);">Quiz Complete!</h2>
+        <p style="font-size: 1.5rem; margin-bottom: 2rem; color: var(--accent-color);">Your Score: <span
+                id="final-score">0</span> / <span id="total-questions">0</span></p>
+
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <button onclick="location.reload()" class="btn-primary">Try Again</button>
+            <a href="/vocabulary" class="btn-primary"
+                style="background: transparent; border: 1px solid var(--border-brass); color: var(--text-primary);">Back
+                to Vocabulary</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let quizData = [];
+    let isAnswered = false;
+
+    const loadingState = document.getElementById('loading-state');
+    const errorState = document.getElementById('error-state');
+    const quizInterface = document.getElementById('quiz-interface');
+    const resultScreen = document.getElementById('result-screen');
+    const questionWord = document.getElementById('question-word');
+    const questionPron = document.getElementById('question-pron');
+    const optionsContainer = document.getElementById('options-container');
+    const progressText = document.getElementById('progress-text');
+    const scoreText = document.getElementById('score-text');
+    const feedbackArea = document.getElementById('feedback-area');
+    const nextBtn = document.getElementById('next-btn');
+
+    async function initQuiz() {
+        try {
+            const response = await fetch('/dictionary/quiz');
+            const data = await response.json();
+
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+
+            quizData = data;
+            loadingState.style.display = 'none';
+            quizInterface.style.display = 'block';
+            loadQuestion();
+        } catch (e) {
+            console.error(e);
+            showError("Failed to load quiz data.");
+        }
+    }
+
+    function showError(msg) {
+        loadingState.style.display = 'none';
+        errorState.style.display = 'block';
+        document.getElementById('error-message').textContent = msg;
+    }
+
+    function loadQuestion() {
+        if (currentQuestionIndex >= quizData.length) {
+            showResults();
+            return;
+        }
+
+        const currentData = quizData[currentQuestionIndex];
+        isAnswered = false;
+
+        // UI Updates
+        questionWord.textContent = currentData.question;
+        questionPron.textContent = currentData.pronunciation ? `[${currentData.pronunciation}]` : '';
+        progressText.textContent = `Question ${currentQuestionIndex + 1}/${quizData.length}`;
+        feedbackArea.textContent = '';
+        nextBtn.style.display = 'none';
+
+        // Render Options
+        optionsContainer.innerHTML = '';
+        currentData.options.forEach(option => {
+            const btn = document.createElement('button');
+            btn.textContent = option;
+            btn.style.padding = '1rem';
+            btn.style.border = '1px solid var(--border-color)';
+            btn.style.borderRadius = '4px';
+            btn.style.background = 'var(--bg-primary)';
+            btn.style.color = 'var(--text-primary)';
+            btn.style.cursor = 'pointer';
+            btn.style.fontSize = '1rem';
+            btn.style.transition = 'all 0.2s';
+
+            btn.addEventListener('mouseover', () => {
+                if (!isAnswered) btn.style.background = 'var(--bg-secondary)';
+            });
+            btn.addEventListener('mouseout', () => {
+                if (!isAnswered) btn.style.background = 'var(--bg-primary)';
+            });
+
+            btn.addEventListener('click', () => checkAnswer(option, btn));
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedOption, btnElement) {
+        if (isAnswered) return;
+        isAnswered = true;
+
+        const currentData = quizData[currentQuestionIndex];
+        const isCorrect = selectedOption === currentData.answer;
+
+        if (isCorrect) {
+            score++;
+            scoreText.textContent = `Score: ${score}`;
+            btnElement.style.background = '#d4edda'; // Greenish
+            btnElement.style.borderColor = '#c3e6cb';
+            feedbackArea.textContent = "Correct! 🎉";
+            feedbackArea.style.color = "#155724";
+        } else {
+            btnElement.style.background = '#f8d7da'; // Reddish
+            btnElement.style.borderColor = '#f5c6cb';
+            feedbackArea.textContent = `Incorrect. The answer was "${currentData.answer}"`;
+            feedbackArea.style.color = "#721c24";
+
+            // Highlight correct answer
+            Array.from(optionsContainer.children).forEach(child => {
+                if (child.textContent === currentData.answer) {
+                    child.style.background = '#d4edda';
+                    child.style.borderColor = '#c3e6cb';
+                }
+            });
+        }
+
+        nextBtn.style.display = 'inline-block';
+    }
+
+    nextBtn.addEventListener('click', () => {
+        currentQuestionIndex++;
+        loadQuestion();
+    });
+
+    function showResults() {
+        quizInterface.style.display = 'none';
+        resultScreen.style.display = 'block';
+        document.getElementById('final-score').textContent = score;
+        document.getElementById('total-questions').textContent = quizData.length;
+    }
+
+    // Start
+    initQuiz();
+</script>
+{% endblock %}

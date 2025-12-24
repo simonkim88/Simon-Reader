@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlalchemy
+python-multipart
+ebooklib
+beautifulsoup4
+python-docx
+requests
+pydantic
+jinja2
+python-multipart
+deep-translator
+pdfplumber
+pystardict
